@@ -1,9 +1,9 @@
 const express = require('express');
-const ExampleRoutes = require('../routes/ExampleRoutes');
+const article = require('../routes/article');
 
 module.exports = function(app) 
 {
     app.use(express.json());
-    app.use('/api/example', ExampleRoutes);
+    app.use('/api/article', article);
  
 }
