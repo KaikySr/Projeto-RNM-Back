@@ -3,12 +3,12 @@ const routes = require('./src/routes');
 const cors = require('cors');
 const app = express();
 
-require('./startup/db')();
-require('./startup/routes')(app);
-
 app.use(cors({
     origin: '*'
 }));
+
+require('./src/startup/db')();
+require('./src/startup/routes')(app);
 
 routes(app);
 

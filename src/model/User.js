@@ -1,12 +1,7 @@
 const mongoose = require('mongoose');
-const { authorSchema } = require('./Author');
 const User = mongoose.model('User',
     new mongoose.Schema({
-        author: {
-            type: authorSchema,
-            required: true
-        },
-        login: {
+       login: {
             type: String,
             required: true,
             minlength: 3

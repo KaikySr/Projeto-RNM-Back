@@ -3,6 +3,7 @@ const AuthControler = require('../controller/UserController');
 const route = express.Router();
 
 route
-    .post('/api/register', AuthControler.register)
+    .post('/register', AuthControler.register)
+    .post('/login', AuthControler.login)
     
 module.exports = route;

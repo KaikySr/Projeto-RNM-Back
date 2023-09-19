@@ -1,146 +1,135 @@
+const Article = require('../model/article');
+const userController = require('./UserController');
+const fs = require('fs');
+const path = require('path');
+const jwtDecode = require('jwt-decode');
+
 class ArticleController {
+    static createLog(error) {
+        const timestamp = Date.now();
+        const archivePath = path.resolve(__dirname, '..', `logs-${timestamp}.txt`);
+        const errorString = JSON.stringify(error.message)
+        fs.writeFile(archivePath, errorString, function (err, result) {
+            if (err) console.log(err)
+        })
+    }
+
+    static async getAll(req, res) {
+        let page = req.params.page;
+        let limit = 5;
+        let skip = limit * (page - 1);
+        try {
+            const articles = await Article.find().skip(skip).limit(limit);
+            return res.status(200).send(articles);
+        } catch (error) {
+            ArticleController.createLog(error);
+            return res.status(500).send({ message: "Falha ao carregar os Artigos" })
+        }
+    };
+
+    static async getPages(req, res) {
+        try {
+            const articles = await Article.find();
+            return res.status(200).send(articles.length);
+        } catch (error) {
+            ArticleController.createLog(error);
+            return res.status(500).send({ message: "Falha ao carregar os Artigos" })
+        }
+    }
 
     static async create(req, res) {
-        const { title, text, authorid } = req.body;
-        if (!title || !text || !authorid)
+        const { title, text, userid, articleId } = req.body;
+        console.log(req.body)
+
+        if (!title || !text || !userid)
             return res.status(400).send({ message: "os campos não podem estarem vazios " });
+
         if (title.length < 3)
             return res.status(400).send({ message: "o titulo não pode ser menor que 3 caracteres" });
+
         if (text.length < 15)
             return res.status(400).send({ message: "o artigo não pode ser menor que 15 caracteres" });
+
+        if (userid.length < 3)
+            return res.status(400).send({ message: "O autor não pode ser menor que 3 caracteres" })
+
+
+        const user = await userController.getUser(userid);
         try {
-            const author = await authorController.getAuthor(authorid);
-            const article = {
+            const newArticle = {
                 title,
                 text,
-                likes: 0,
-                author,
+                likes: [],
+                user,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
                 removedAt: null,
+                comments: []
             }
-            await Article.create(article)
+            if (articleId) {
+                const article = await Article.findById(articleId);
+                const { comments } = article;
+
+                comments.push(newArticle);
+
+                await Article.findByIdAndUpdate({ _id: articleId }, { comments })
+                return res.status(200).send();
+            }
+            await Article.create(newArticle)
             return res.status(201).send({ message: "Artigo criado com sucesso" })
         } catch (error) {
-            ArticleController.createLog(error);
             return res.status(500).send({ error: "Falha ao salvar o artigo", data: error.message });
         }
     };
 
     static async likeArticle(req, res) {
-        const { id } = req.params;
-        if (!id) return res.status(400).send({ message: "No id provider" })
+        const { articleId } = req.params;
+        console.log(articleId)
+        const { token } = req.body;
+
+        const { id } = jwtDecode(token)
+
+        if (!articleId) return res.status(400).send({ message: "No id provider" })
+
         try {
-            const article = await Article.findById(id);
-            await Article.findByIdAndUpdate({ _id: id }, { likes: ++article.likes })
+            const article = await Article.findById(articleId);
+            const { likes } = article;
+
+            likes.push(id);
+
+            await Article.findByIdAndUpdate({ _id: articleId }, { likes })
             return res.status(200).send();
         } catch (error) {
             ArticleController.createLog(error);
             return res.status(500).send({ error: "Falha ao curtir", data: error.message })
         }
+    };
+
+    static async unlikeArticle(req, res) {
+        const { id } = req.params;
+        const { userId } = req.body;
+
+        if (!id) return res.status(400).send({ message: "No id provider" });
+
+        try {
+            const article = await Article.findById(id);
+            var { likes } = article;
+            const tempLikes = [];
+
+            likes.map(like => {
+                if (like !== userId) tempLikes.push(userId);
+            })
+
+            likes = tempLikes;
+
+            await Article.findByIdAndUpdate({ _id: id }, { likes })
+            return res.status(200).send();
+        } catch (error) {
+            ArticleController.createLog(error);
+            return res.status(500).send({ error: "Falha ao curtir", data: error.message })
+        }
+
     }
-
-
 }
 
 module.exports = ArticleController;
-
-// const ExampleModel = require('../models/ExampleModel');
-
-// class CarteiraController {
-//     static async create(req, res) {
-//         const { nome, dataDeCriacao, descricao, saldoAtual } = req.body;
-
-//         if (!nome || !dataDeCriacao || !descricao || !saldoAtual)
-//             return res.status(400).send({ message: "Dados inválidos" })
-
-//         const carteiras =
-//         {
-//             nome: nome,
-//             dataDeCriacao: dataDeCriacao,
-//             descricao: descricao,
-//             saldoAtual: saldoAtual
-//         }
-
-//         try {
-//             const c = await ExampleModel.create(carteiras);
-//             return res.status(201).send({ message: "Carteira criada com sucesso", body: c });
-//         }
-//         catch (error) {
-//             return res.status(500).send({ error: error });
-//         }
-//     };
-
-//     static async getAllCarteiras(req, res) {
-//         try {
-//             const carteira = await ExampleModel.find()
-//             return res.status(200).send({ data: carteira });
-//         }
-//         catch (error) {
-//             return res.status(500).send({ error: error });
-//         }
-//     };
-
-//     static async getById(req, res) {
-//         const { id } = req.params;
-
-//         if (!id)
-//             return res.status(400).send({ message: "No id provider" })
-
-//         try {
-//             const carteira = await ExampleModel.findById(id);
-//             return res.status(200).json(carteira);
-//         }
-//         catch (error) {
-//             res.status(500).json({ error: error })
-//         }
-//     };
-
-//     static async updateById(req, res) {
-//         const { id } = req.params;
-
-//         if (!id)
-//             return res.status(400).send({ message: "Nenhum provedor de id." })
-
-//         const carteiras = req.body;
-
-//         if (!carteiras.saldoAtual)
-//             return res.status(400).send({ message: "Nenhum provedor de saldo atual." })
-
-//         try
-//         {
-//             const newCarteiras = await ExampleModel.findByIdAndUpdate
-//                 (
-//                     id,
-//                     { saldoAtual: carteiras.saldoAtual }
-//                 );
-//             return res.status(201).send(newCarteiras);
-//         }
-//         catch (error)
-//         {
-//             return res.status(500).send({ error: error });
-//         }
-//     };
-
-//     static async deleteById(req, res)
-//     {
-//         const { id } = req.params;
-
-//         if (!id)
-//             return res.status(400).send({ message: "Nenhum provedor de id." });
-
-//         try
-//         {
-//             await ExampleModel.findByIdAndRemove(id);
-//             return res.status(200).send({ message: "Carteira deletada com sucesso!" })
-//         }
-//         catch (error)
-//         {
-//             console.log(error);
-//             return res.status(500).send({ message: "Algo falhou." })
-//         }
-//     };
-// }
-
-// module.exports = CarteiraController
-
