@@ -82,41 +82,48 @@ class ArticleController {
         }
     };
 
-    static async likeArticle(req, res) {
-        const { articleId } = req.params;
-        console.log(articleId)
+    static async likeArticle(req, res) 
+    {
+        const { id : articleId  } = req.params;
         const { token } = req.body;
-
-        const { id } = jwtDecode(token)
+        const { id } = jwtDecode(token);
 
         if (!articleId) return res.status(400).send({ message: "No id provider" })
 
-        try {
+        try 
+        {
             const article = await Article.findById(articleId);
             const { likes } = article;
 
             likes.push(id);
 
             await Article.findByIdAndUpdate({ _id: articleId }, { likes })
+    
             return res.status(200).send();
-        } catch (error) {
+        } 
+        catch (error) 
+        {
             ArticleController.createLog(error);
+
             return res.status(500).send({ error: "Falha ao curtir", data: error.message })
-        }
+        }        
     };
 
-    static async unlikeArticle(req, res) {
+    static async unlikeArticle(req, res) 
+    {
         const { id } = req.params;
         const { userId } = req.body;
 
         if (!id) return res.status(400).send({ message: "No id provider" });
 
-        try {
+        try 
+        {
             const article = await Article.findById(id);
             var { likes } = article;
             const tempLikes = [];
 
-            likes.map(like => {
+            likes.map(like => 
+            {
                 if (like !== userId) tempLikes.push(userId);
             })
 
@@ -124,12 +131,40 @@ class ArticleController {
 
             await Article.findByIdAndUpdate({ _id: id }, { likes })
             return res.status(200).send();
-        } catch (error) {
+        } 
+        catch (error) 
+        {
             ArticleController.createLog(error);
             return res.status(500).send({ error: "Falha ao curtir", data: error.message })
         }
+    };
 
-    }
+    static async commentArticle(req, res) 
+    {
+        const { id : articleId  } = req.params;
+        const { token } = req.body;
+        const { id } = jwtDecode(token);
+
+        if (!articleId) return res.status(400).send({ message: "No id provider" })
+
+        try 
+        {
+            const article = await Article.findById(articleId);
+            const { comments } = article;
+
+            comments.push(id);
+
+            await Article.findByIdAndUpdate({ _id: articleId }, { likes })
+    
+            return res.status(200).send();
+        } 
+        catch (error) 
+        {
+            ArticleController.createLog(error);
+            
+            return res.status(500).send({ error: "Falha ao curtir", data: error.message })
+        }        
+    };
 }
 
 module.exports = ArticleController;
